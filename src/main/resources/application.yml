@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: user-service
+
+
+  datasource:
+    url: ${POSTGRES_URI}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+
+
+  data:
+    redis:
+      database: ${REDIS_DATABASE_NUMBER}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI}
+    instance:
+      preferIpAddress: true
+
+app:
+  jwt:
+    accessSecret: ${JWT_ACCESS_SECRET}
