@@ -1,16 +1,16 @@
 package dev.ilya_anna.user_service.services;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
+import dev.ilya_anna.user_service.entities.AvatarMetadata;
 import dev.ilya_anna.user_service.entities.User;
-import dev.ilya_anna.user_service.exceptions.JwtAuthenticationException;
+import dev.ilya_anna.user_service.exceptions.AvatarNotFoundException;
 import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
+import dev.ilya_anna.user_service.repositories.AvatarMetadataRepository;
 import dev.ilya_anna.user_service.repositories.UserRepository;
 import io.minio.*;
 import io.minio.errors.*;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,46 +24,50 @@ import java.util.UUID;
 public class DaoAvatarService implements AvatarService{
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AvatarMetadataRepository avatarMetadataRepository;
+
     @Autowired
     private MinioClient minioClient;
-    @Autowired
-    private JwtService jwtService;
     private static final String BUCKET_NAME = "avatars";
 
-    public Resource getAvatar(String userId, String authHeader)
+    public Resource getAvatar(String userId)
             throws ServerException, InsufficientDataException,
             ErrorResponseException, IOException,
             NoSuchAlgorithmException, InvalidKeyException,
             InvalidResponseException, XmlParserException,
             InternalException {
 
-        if (authHeader == null) {
-            throw new JwtAuthenticationException("Missing or invalid Authorization header");
-        }
-
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("user with id " + userId + " not found"));
-        String avatarId = user.getAvatarImageId();
+
+        if (user.getAvatarImageId() == null) {
+            throw new AvatarNotFoundException("User has no avatar");
+        }
+
+        AvatarMetadata avatarMetadata = avatarMetadataRepository.findById(user.getAvatarImageId())
+                .orElseThrow(() -> new AvatarNotFoundException("Avatar metadata not found"));
+
         InputStream stream = minioClient.getObject(
                 GetObjectArgs.builder()
                         .bucket(BUCKET_NAME)
-                        .object(avatarId)
+                        .object(avatarMetadata.getAvatarPath())
                         .build());
         return new InputStreamResource(stream);
     }
 
-    public String updateAvatar(String userId, MultipartFile avatarFile, String authHeader) throws ServerException, InsufficientDataException,
+    public String updateAvatar(String userId, MultipartFile avatarFile) throws ServerException, InsufficientDataException,
             ErrorResponseException, IOException,
             NoSuchAlgorithmException, InvalidKeyException,
             InvalidResponseException, XmlParserException,
             InternalException {
 
-        validateAuthorization(userId, authHeader);
-
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("User with id " + userId + " not found"));
 
         String avatarId = UUID.randomUUID().toString();
+        String avatarPath = "users/" + userId + "/avatar/" + avatarId;
 
         if (user.getAvatarImageId() != null) {
             removeOldAvatar(user.getAvatarImageId());
@@ -73,11 +77,16 @@ public class DaoAvatarService implements AvatarService{
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(BUCKET_NAME)
-                            .object(avatarId)
+                            .object(avatarPath)
                             .stream(inputStream, avatarFile.getSize(), -1)
                             .contentType(avatarFile.getContentType())
                             .build());
         }
+
+        AvatarMetadata avatarMetadata = new AvatarMetadata();
+        avatarMetadata.setId(avatarId);
+        avatarMetadata.setAvatarPath(avatarPath);
+        avatarMetadataRepository.save(avatarMetadata);
 
         user.setAvatarImageId(avatarId);
         userRepository.save(user);
@@ -93,24 +102,13 @@ public class DaoAvatarService implements AvatarService{
             InvalidResponseException, XmlParserException,
             InternalException {
 
+        AvatarMetadata avatarMetadata = avatarMetadataRepository.findById(avatarId)
+                .orElseThrow(() -> new AvatarNotFoundException("Avatar metadata not found"));
+
         minioClient.removeObject(
                 RemoveObjectArgs.builder()
                         .bucket(BUCKET_NAME)
-                        .object(avatarId)
+                        .object(avatarMetadata.getAvatarPath())
                         .build());
-    }
-
-    private void validateAuthorization(String userId, String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new JwtAuthenticationException("Missing or invalid Authorization header");
-        }
-
-        String jwtToken = authHeader.substring(7);
-        DecodedJWT decodedJWT = jwtService.verifyAccessToken(jwtToken);
-        String tokenUserId = decodedJWT.getClaim("userId").asString();
-
-        if (!userId.equals(tokenUserId)) {
-            throw new AccessDeniedException("User ID mismatch");
-        }
     }
 }

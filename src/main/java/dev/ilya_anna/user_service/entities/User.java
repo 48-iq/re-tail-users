@@ -23,7 +23,6 @@ public class User {
     private String phone;
     private String address;
     private LocalDateTime registeredAt;
-    private Integer announcementsCount;
     private String about;
     private String avatarImageId;
     @OneToOne(mappedBy = "user")

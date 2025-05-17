@@ -1,28 +1,25 @@
 package dev.ilya_anna.user_service.services;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
 import dev.ilya_anna.user_service.dto.UpdateUserDto;
 import dev.ilya_anna.user_service.dto.UserAllInfoDto;
 import dev.ilya_anna.user_service.dto.UserDto;
 import dev.ilya_anna.user_service.entities.User;
 import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
-import dev.ilya_anna.user_service.exceptions.JwtAuthenticationException;
 import dev.ilya_anna.user_service.repositories.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class DaoUserService implements UserService{
     @Autowired
     private UserRepository userRepository;
+
     @Autowired
-    private JwtService jwtService;
+    private RestTemplate restTemplate;
 
-    public UserAllInfoDto getUserAllInfo(String userId, String authHeader){
-        validateAuthorization(userId, authHeader);
-
+    public UserAllInfoDto getUserAllInfo(String userId){
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("user with id " + userId + " not found"));
 
@@ -35,17 +32,13 @@ public class DaoUserService implements UserService{
                 .phone(user.getPhone())
                 .address(user.getAddress())
                 .registeredAt(user.getRegisteredAt())
-                .announcementsCount(user.getAnnouncementsCount())
+                .announcementsCount(getAnnouncementsCount(userId))
                 .about(user.getAbout())
                 .avatarImageId(user.getAvatarImageId())
                 .build();
     }
 
-    public UserDto getUser(String userId, String authHeader){
-        if (authHeader == null) {
-            throw new JwtAuthenticationException("Missing or invalid Authorization header");
-        }
-
+    public UserDto getUser(String userId){
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("user with id " + userId + " not found"));
 
@@ -57,15 +50,13 @@ public class DaoUserService implements UserService{
                 .phone(user.getPhone())
                 .address(user.getAddress())
                 .registeredAt(user.getRegisteredAt())
-                .announcementsCount(user.getAnnouncementsCount())
+                .announcementsCount(getAnnouncementsCount(userId))
                 .about(user.getAbout())
                 .avatarImageId(user.getAvatarImageId())
                 .build();
     }
 
-    public UserAllInfoDto updateUser(String userId, @Valid UpdateUserDto updateUserDto, String authHeader){
-        validateAuthorization(userId, authHeader);
-
+    public UserAllInfoDto updateUser(String userId, @Valid UpdateUserDto updateUserDto){
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("user with id " + userId + " not found"));
         user.setName(updateUserDto.getName());
@@ -86,23 +77,14 @@ public class DaoUserService implements UserService{
                 .phone(user.getPhone())
                 .address(user.getAddress())
                 .registeredAt(user.getRegisteredAt())
-                .announcementsCount(user.getAnnouncementsCount())
+                .announcementsCount(getAnnouncementsCount(userId))
                 .about(user.getAbout())
                 .avatarImageId(user.getAvatarImageId())
                 .build();
     }
 
-    private void validateAuthorization(String userId, String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new JwtAuthenticationException("Missing or invalid Authorization header");
-        }
-
-        String jwtToken = authHeader.substring(7);
-        DecodedJWT decodedJWT = jwtService.verifyAccessToken(jwtToken);
-        String tokenUserId = decodedJWT.getClaim("userId").asString();
-
-        if (!userId.equals(tokenUserId)) {
-            throw new AccessDeniedException("User ID mismatch");
-        }
+    public int getAnnouncementsCount(String userId) {
+        String url = "/api/v1/announcement/get-announcements-count?userId=" + userId;
+        return restTemplate.getForObject(url, Integer.class, userId);
     }
 }

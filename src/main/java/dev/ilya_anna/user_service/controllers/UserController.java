@@ -4,8 +4,10 @@ import dev.ilya_anna.user_service.dto.UpdateUserDto;
 import dev.ilya_anna.user_service.dto.UserAllInfoDto;
 import dev.ilya_anna.user_service.dto.UserDto;
 import dev.ilya_anna.user_service.dto.UserSettingsDto;
+import dev.ilya_anna.user_service.exceptions.AvatarNotFoundException;
 import dev.ilya_anna.user_service.exceptions.JwtAuthenticationException;
 import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
+import dev.ilya_anna.user_service.security.DaoUserDetails;
 import dev.ilya_anna.user_service.services.AvatarService;
 import dev.ilya_anna.user_service.services.UserService;
 import dev.ilya_anna.user_service.services.UserSettingsService;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
@@ -38,17 +41,15 @@ public class UserController {
 
     @GetMapping("/get-all-info/{userId}")
     public ResponseEntity<UserAllInfoDto> getUserAllInfo(
-            @PathVariable String userId,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @PathVariable String userId, @AuthenticationPrincipal DaoUserDetails userDetails) {
 
-        try {
-            return ResponseEntity.ok(userService.getUserAllInfo(userId, authHeader));
-        } catch (JwtAuthenticationException e) {
-            log.error("Authentication failed");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        } catch (AccessDeniedException e) {
+        if (userDetails == null || !userDetails.getUsername().equals(userId)) {
             log.warn("Access denied for user {}", userId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        try {
+            return ResponseEntity.ok(userService.getUserAllInfo(userId));
         } catch (UserNotFoundException e) {
             log.error("User not found: {}", userId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -56,13 +57,9 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<UserDto> getUser(@PathVariable String userId,
-                                           @RequestHeader(value = "Authorization", required = false) String authHeader){
+    public ResponseEntity<UserDto> getUser(@PathVariable String userId){
         try {
-            return ResponseEntity.ok(userService.getUser(userId, authHeader));
-        } catch (JwtAuthenticationException e) {
-            log.error("Authentication failed");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.ok(userService.getUser(userId));
         } catch (UserNotFoundException e) {
             log.error("User {} not found", userId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -71,16 +68,14 @@ public class UserController {
 
     @PutMapping("/update-user/{userId}")
     public ResponseEntity<UserAllInfoDto> updateUser(@PathVariable String userId,
-                                             @RequestBody UpdateUserDto updateUserDto,
-                                                     @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            return ResponseEntity.ok(userService.updateUser(userId, updateUserDto, authHeader));
-        } catch (JwtAuthenticationException e) {
-            log.error("Authentication failed");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        } catch (AccessDeniedException e) {
+                                                     @RequestBody UpdateUserDto updateUserDto,
+                                                     @AuthenticationPrincipal DaoUserDetails userDetails) {
+        if (userDetails == null || !userDetails.getUsername().equals(userId)) {
             log.warn("Access denied for user {}", userId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        try {
+            return ResponseEntity.ok(userService.updateUser(userId, updateUserDto));
         } catch (UserNotFoundException e) {
             log.error("User not found: {}", userId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -89,16 +84,14 @@ public class UserController {
 
     @PutMapping("/update-user-settings/{userId}")
     public ResponseEntity<UserSettingsDto> updateUserSettings(@PathVariable String userId,
-                                             @RequestBody UserSettingsDto userSettingsDto,
-                                                              @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            return ResponseEntity.ok(userSettingsService.updateUserSettings(userId, userSettingsDto, authHeader));
-        } catch (JwtAuthenticationException e) {
-            log.error("Authentication failed");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        } catch (AccessDeniedException e) {
+                                                              @RequestBody UserSettingsDto userSettingsDto,
+                                                              @AuthenticationPrincipal DaoUserDetails userDetails) {
+        if (userDetails == null || !userDetails.getUsername().equals(userId)) {
             log.warn("Access denied for user {}", userId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        try {
+            return ResponseEntity.ok(userSettingsService.updateUserSettings(userId, userSettingsDto));
         } catch (UserNotFoundException e) {
             log.error("User not found: {}", userId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -106,16 +99,16 @@ public class UserController {
     }
 
     @GetMapping("/get-avatar/{userId}")
-    public ResponseEntity<Resource> getUserAvatar(@PathVariable String userId, @RequestHeader(value = "Authorization", required = false) String authHeader){
+    public ResponseEntity<Resource> getUserAvatar(@PathVariable String userId){
         try {
-            return ResponseEntity.ok(avatarService.getAvatar(userId, authHeader));
-        } catch (JwtAuthenticationException e) {
-            log.error("Authentication failed");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.ok(avatarService.getAvatar(userId));
         } catch (UserNotFoundException e) {
             log.error("User {} not found", userId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } catch (IOException | ServerException | InsufficientDataException | ErrorResponseException | NoSuchAlgorithmException | InvalidKeyException | InvalidResponseException | XmlParserException | InternalException e){
+        } catch (AvatarNotFoundException e) {
+            log.error("Avatar not found for user {}", userId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e){
             log.error("Failed to upload avatar for user {}", userId);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
@@ -124,19 +117,20 @@ public class UserController {
     @PostMapping("/update-avatar/{userId}")
     public ResponseEntity<String> updateUserAvatar(@PathVariable String userId,
                                                    @RequestParam("avatar") MultipartFile avatarFile,
-                                                   @RequestHeader(value = "Authorization", required = false) String authHeader){
-        try {
-            return ResponseEntity.ok(avatarService.updateAvatar(userId, avatarFile, authHeader));
-        } catch (JwtAuthenticationException e) {
-            log.error("Authentication failed");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        } catch (AccessDeniedException e) {
+                                                   @AuthenticationPrincipal DaoUserDetails userDetails){
+        if (userDetails == null || !userDetails.getUsername().equals(userId)) {
             log.warn("Access denied for user {}", userId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        try {
+            return ResponseEntity.ok(avatarService.updateAvatar(userId, avatarFile));
         } catch (UserNotFoundException e) {
             log.error("User not found: {}", userId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } catch (IOException | ServerException | InsufficientDataException | ErrorResponseException | NoSuchAlgorithmException | InvalidKeyException | InvalidResponseException | XmlParserException | InternalException e){
+        } catch (AvatarNotFoundException e) {
+            log.error("Avatar not found for user {}", userId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e){
             log.error("Failed to upload avatar for user {}", userId);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
