@@ -5,4 +5,6 @@ import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
 
 public interface UserSettingsService {
     UserSettingsDto updateUserSettings(String userId, UserSettingsDto userSettingsDto) throws UserNotFoundException;
+
+    UserSettingsDto getUserSettings(String userId) throws UserNotFoundException;
 }

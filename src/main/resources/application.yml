@@ -24,13 +24,12 @@ eureka:
       preferIpAddress: true
 
 app:
-  app:
-    jwt:
-      subject: ${JWT_SUBJECT}
-      issuer: ${JWT_ISSUER}
-      access:
-        duration: ${JWT_ACCESS_DURATION}
-        secret: ${JWT_ACCESS_SECRET}
+  jwt:
+    subject: ${JWT_SUBJECT}
+    issuer: ${JWT_ISSUER}
+    access:
+      duration: ${JWT_ACCESS_DURATION}
+      secret: ${JWT_ACCESS_SECRET}
 
   minio:
     endpoint: ${MINIO_ENDPOINT}

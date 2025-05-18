@@ -1,5 +1,6 @@
 package dev.ilya_anna.user_service.configs;
 
+import dev.ilya_anna.user_service.authorizers.DaoUserAuthorizer;
 import dev.ilya_anna.user_service.security.JwtFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +16,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
     @Autowired
+    private DaoUserAuthorizer daoUserAuthorizer;
+    @Autowired
     private JwtFilter jwtFilter;
 
     @Bean
@@ -25,7 +28,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/user/get-all-info/**",
                                 "/api/v1/user/update-user/**",
                                 "/api/v1/user/update-user-settings/**",
-                                "/api/v1/user/update-avatar/**").authenticated()
+                                "/api/v1/user/update-avatar/**").access(daoUserAuthorizer)
                         .anyRequest().permitAll()
                 )
                 .anonymous(AbstractHttpConfigurer::disable)
