@@ -1,5 +1,6 @@
 package dev.ilya_anna.user_service.services;
 
+import dev.ilya_anna.user_service.dto.UserDto;
 import dev.ilya_anna.user_service.entities.AvatarMetadata;
 import dev.ilya_anna.user_service.entities.User;
 import dev.ilya_anna.user_service.exceptions.AvatarNotFoundException;
@@ -20,6 +21,9 @@ import java.io.InputStream;
 public class DaoAvatarService implements AvatarService{
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserService userService;
 
     @Autowired
     private AvatarMetadataRepository avatarMetadataRepository;
@@ -49,7 +53,7 @@ public class DaoAvatarService implements AvatarService{
         }
     }
 
-    public String updateAvatar(String userId, MultipartFile avatarFile){
+    public UserDto updateAvatar(String userId, MultipartFile avatarFile){
         String originalFilename = avatarFile.getOriginalFilename();
         String fileExtension = getFileExtension(originalFilename);
 
@@ -89,7 +93,18 @@ public class DaoAvatarService implements AvatarService{
         user.setAvatarImageId(avatarId);
         userRepository.save(user);
 
-        return avatarId;
+        return UserDto.builder()
+                .name(user.getName())
+                .surname(user.getSurname())
+                .nickname(user.getNickname())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .address(user.getAddress())
+                .registeredAt(user.getRegisteredAt())
+                .announcementsCount(userService.getAnnouncementsCount(userId))
+                .about(user.getAbout())
+                .avatarImageId(user.getAvatarImageId())
+                .build();
     }
 
 

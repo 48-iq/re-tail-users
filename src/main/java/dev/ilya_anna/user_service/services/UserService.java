@@ -13,4 +13,6 @@ public interface UserService {
     UserDto updateUser(String userId, UpdateUserDto updateUserDto) throws UserNotFoundException;
 
     void createUser(UserCreatedEvent userCreatedEvent);
+
+    int getAnnouncementsCount(String userId);
 }

@@ -1,5 +1,6 @@
 package dev.ilya_anna.user_service.controllers;
 
+import dev.ilya_anna.user_service.dto.UserDto;
 import dev.ilya_anna.user_service.exceptions.AvatarNotFoundException;
 import dev.ilya_anna.user_service.exceptions.InvalidImageFormatException;
 import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
@@ -30,11 +31,11 @@ public class AvatarController {
                     "returns avatar file"
     )
     @GetMapping("/{userId}")
-    public ResponseEntity<Resource> getUserAvatar(@PathVariable String userId){
+    public ResponseEntity<Resource> getUserAvatar(@PathVariable String avatarId){
         try {
-            return ResponseEntity.ok(avatarService.getAvatar(userId));
+            return ResponseEntity.ok(avatarService.getAvatar(avatarId));
         } catch (AvatarNotFoundException e) {
-            log.error("Avatar not found for user {}", userId);
+            log.error("Avatar with id {} not found", avatarId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
@@ -42,11 +43,11 @@ public class AvatarController {
     @Operation(
             summary = "Update user avatar",
             description = "Updates user avatar by user id and avatar file, " +
-                    "returns avatar id"
+                    "returns user info"
     )
     @PostMapping("/{userId}")
-    public ResponseEntity<String> updateUserAvatar(@PathVariable String userId,
-                                                   @RequestParam("avatar") MultipartFile avatarFile){
+    public ResponseEntity<UserDto> updateUserAvatar(@PathVariable String userId,
+                                                    @RequestParam("avatar") MultipartFile avatarFile){
         try {
             return ResponseEntity.ok(avatarService.updateAvatar(userId, avatarFile));
         } catch (UserNotFoundException e) {

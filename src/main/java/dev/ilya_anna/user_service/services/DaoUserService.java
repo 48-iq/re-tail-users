@@ -103,7 +103,7 @@ public class DaoUserService implements UserService{
         userRepository.save(user);
     }
 
-    private int getAnnouncementsCount(String userId) {
+    public int getAnnouncementsCount(String userId) {
         String url = "/api/v1/announcement/get-announcements-count?userId=" + userId;
         return restTemplate.getForObject(url, Integer.class, userId);
     }
