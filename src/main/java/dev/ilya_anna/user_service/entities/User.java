@@ -24,6 +24,6 @@ public class User {
     private ZonedDateTime registeredAt;
     private String about;
     private String avatarImageId;
-    @OneToOne(mappedBy = "user")
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private UserSettings userSettings;
 }

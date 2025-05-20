@@ -9,6 +9,7 @@ import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
 import dev.ilya_anna.user_service.repositories.AvatarMetadataRepository;
 import dev.ilya_anna.user_service.repositories.UserRepository;
 import io.minio.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 
+@Slf4j
 @Service
 public class DaoAvatarService implements AvatarService{
     @Autowired
@@ -48,8 +50,9 @@ public class DaoAvatarService implements AvatarService{
                             .build());
             return new InputStreamResource(stream);
         }
-        catch (Exception e){
-            throw new RuntimeException("Failed to get avatar with id " + avatarId);
+        catch (Exception e) {
+            log.error("Failed to get avatar with id " + avatarId, e);
+            throw new RuntimeException("Failed to get avatar with id " + avatarId, e);
         }
     }
 
@@ -82,6 +85,7 @@ public class DaoAvatarService implements AvatarService{
                             .build());
         }
         catch (Exception e){
+            log.error("Failed to upload avatar with id " + avatarId, e);
             throw new RuntimeException("Failed to upload avatar for user with id " + userId);
         }
 
@@ -121,6 +125,7 @@ public class DaoAvatarService implements AvatarService{
                             .build());
         }
         catch (Exception e){
+            log.error("Failed to delete avatar with id " + avatarId, e);
             throw new RuntimeException("Failed to delete avatar with id " + avatarId);
         }
 

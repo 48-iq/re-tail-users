@@ -13,6 +13,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,7 @@ public class JwtFilter extends OncePerRequestFilter {
     @Autowired
     private JwtService jwtService;
     @Autowired
-    private BlacklistService jwtBlacklistService;
+    private BlacklistService blacklistService;
     @Autowired
     private UserRepository userRepository;
 
@@ -45,7 +46,7 @@ public class JwtFilter extends OncePerRequestFilter {
                         () -> new UserNotFoundException("User with id " + userId + " not found")
                 );
 
-                if (jwtBlacklistService.isInBlacklist(userId)) {
+                if (blacklistService.isInBlacklist(userId)) {
                     throw new JwtAuthenticationException("Token is blacklisted");
                 }
 
@@ -63,10 +64,12 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         catch (JWTVerificationException e) {
             response.getWriter().write("Invalid authorization JWT");
+            response.setStatus(HttpStatus.FORBIDDEN.value());
         } catch (UserNotFoundException e) {
-            response.getWriter().write(e.getMessage());
+            response.setStatus(HttpStatus.NOT_FOUND.value());
         } catch (JwtAuthenticationException e) {
-            response.getWriter().write(e.getMessage());
+            response.getWriter().write("JWT is in blacklist");
+            response.setStatus(HttpStatus.FORBIDDEN.value());
         }
     }
 }

@@ -6,6 +6,7 @@ import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
 import dev.ilya_anna.user_service.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/user")
 @Tag(name = "User controller",
         description = "Controller for managing users"
 )
@@ -60,7 +61,7 @@ public class UserController {
     )
     @PutMapping("/{userId}")
     public ResponseEntity<UserDto> updateUser(@PathVariable String userId,
-                                                     @RequestBody UpdateUserDto updateUserDto) {
+                                              @Valid @RequestBody UpdateUserDto updateUserDto) {
         try {
             return ResponseEntity.ok(userService.updateUser(userId, updateUserDto));
         } catch (UserNotFoundException e) {
