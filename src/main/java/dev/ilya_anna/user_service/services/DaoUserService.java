@@ -2,8 +2,8 @@ package dev.ilya_anna.user_service.services;
 
 import dev.ilya_anna.user_service.dto.UpdateUserDto;
 import dev.ilya_anna.user_service.dto.UserDto;
+import dev.ilya_anna.user_service.dto.UserSettingsDto;
 import dev.ilya_anna.user_service.entities.User;
-import dev.ilya_anna.user_service.entities.UserSettings;
 import dev.ilya_anna.user_service.events.UserCreatedEvent;
 import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
 import dev.ilya_anna.user_service.repositories.UserRepository;
@@ -20,6 +20,9 @@ import org.springframework.web.client.RestTemplate;
 public class DaoUserService implements UserService{
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserSettingsService userSettingsService;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -45,19 +48,19 @@ public class DaoUserService implements UserService{
     public UserDto getUser(String userId){
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("user with id " + userId + " not found"));
-        UserSettings userSettings = user.getUserSettings();
+        UserSettingsDto userSettingsDto = userSettingsService.getUserSettings(userId);
 
         return UserDto.builder()
-                .name(userSettings.isNameVisibility()?user.getName():null)
-                .surname(userSettings.isNameVisibility()?user.getSurname():null)
+                .name(userSettingsDto.isNameVisibility()?user.getName():null)
+                .surname(userSettingsDto.isSurnameVisibility()?user.getSurname():null)
                 .nickname(user.getNickname())
-                .email(userSettings.isNameVisibility()?user.getEmail():null)
-                .phone(userSettings.isNameVisibility()?user.getPhone():null)
-                .address(userSettings.isNameVisibility()?user.getAddress():null)
+                .email(userSettingsDto.isEmailVisibility()?user.getEmail():null)
+                .phone(userSettingsDto.isPhoneVisibility()?user.getPhone():null)
+                .address(userSettingsDto.isAddressVisibility()?user.getAddress():null)
                 .registeredAt(user.getRegisteredAt())
                 .announcementsCount(getAnnouncementsCount(userId))
                 .about(user.getAbout())
-                .avatarImageId(userSettings.isNameVisibility()?user.getAvatarImageId():null)
+                .avatarImageId(userSettingsDto.isAvatarVisibility()?user.getAvatarImageId():null)
                 .build();
     }
 

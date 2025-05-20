@@ -24,6 +24,19 @@ public class UserCreatedEvent {
 
     public static final String TOPIC = "user-created-events-topic";
 
+    public static Map<String, Object> toMap(UserCreatedEvent userCreatedEvent) {
+        return Map.of(
+                "id", userCreatedEvent.getId(),
+                "userId", userCreatedEvent.getUserId(),
+                "name", userCreatedEvent.getName(),
+                "surname", userCreatedEvent.getSurname(),
+                "nickname", userCreatedEvent.getNickname(),
+                "phone", userCreatedEvent.getPhone(),
+                "email", userCreatedEvent.getEmail(),
+                "time", userCreatedEvent.getTime().toString()
+        );
+    }
+
     public static UserCreatedEvent fromMap(Map<String, Object> map) {
         return UserCreatedEvent.builder()
                 .id((String) map.get("id"))

@@ -20,6 +20,14 @@ public class UserSignOutEvent {
 
     public static final String TOPIC = "user-sign-out-events-topic";
 
+    public static Map<String, Object> toMap(UserSignOutEvent userSignOutEvent) {
+        return Map.of(
+                "id", userSignOutEvent.getId(),
+                "userId", userSignOutEvent.getUserId(),
+                "time", userSignOutEvent.getTime().toString()
+        );
+    }
+
     public static UserSignOutEvent fromMap(Map<String, Object> map) {
         return UserSignOutEvent.builder()
                 .id((String) map.get("id"))

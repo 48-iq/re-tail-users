@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
+import org.springframework.data.redis.core.index.Indexed;
 
 import java.time.ZonedDateTime;
 
@@ -18,6 +19,7 @@ import java.time.ZonedDateTime;
 public class SignOutMark {
     @Id
     private String id;
+    @Indexed
     private String userId;
     private ZonedDateTime signOutTime;
     @TimeToLive

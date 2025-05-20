@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/users-avatars")
+@RequestMapping("/api/v1/user-avatars")
 @Tag(name = "Avatar controller",
         description = "Controller for managing user avatars"
 )
@@ -30,7 +30,7 @@ public class AvatarController {
             description = "Gets user avatar by id, " +
                     "returns avatar file"
     )
-    @GetMapping("/{userId}")
+    @GetMapping("/{avatarId}")
     public ResponseEntity<Resource> getUserAvatar(@PathVariable String avatarId){
         try {
             return ResponseEntity.ok(avatarService.getAvatar(avatarId));

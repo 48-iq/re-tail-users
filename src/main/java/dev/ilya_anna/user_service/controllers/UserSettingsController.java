@@ -13,11 +13,11 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/users-settings")
+@RequestMapping("/api/v1/user-settings")
 @Tag(name = "User settings controller",
         description = "Controller for managing user settings"
 )
-public class UserSettingController {
+public class UserSettingsController {
 
     @Autowired
     private UserSettingsService userSettingsService;

@@ -22,7 +22,7 @@ public class UpdateUserDto {
     private String surname;
 
     @Schema(description = "User nickname that will be visible to other users", example = "my_nickname")
-    @Pattern(regexp = "^[a-zA-Z0-9.-]{1,32}$")
+    @Pattern(regexp = "^[a-zA-Z0-9._-]{1,32}$")
     private String nickname;
 
     @Schema(description = "User email", example = "Q2t5t@example.com")

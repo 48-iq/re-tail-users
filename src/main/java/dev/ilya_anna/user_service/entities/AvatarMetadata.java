@@ -14,6 +14,6 @@ import lombok.*;
 @Builder
 public class AvatarMetadata {
     @Id
-    private String Id;
+    private String id;
     private String avatarPath;
 }
