@@ -107,7 +107,7 @@ public class UserCreatedEventsConsumerTests {
     }
 
     @Test
-    void consumeUserCreatedEvent_CreatesUserInDB_WhenEventReceived() throws ExecutionException, InterruptedException {
+    void consumeUserCreatedEvent_CreatesUserInDB_WhenEventReceived() {
         await().atMost(300, TimeUnit.SECONDS).until(() -> kafka.isRunning());
         UserCreatedEvent userCreatedEvent = new UserCreatedEvent();
         userCreatedEvent.setId("123");
@@ -119,9 +119,14 @@ public class UserCreatedEventsConsumerTests {
         userCreatedEvent.setEmail("john.doe@example.com");
         userCreatedEvent.setTime(ZonedDateTime.now(ZoneId.systemDefault()));
 
-        kafkaTemplate.send("user-created-events-topic",
-                userCreatedEvent.getId(),
-                UserCreatedEvent.toMap(userCreatedEvent)).get();
+        try{
+            kafkaTemplate.send("user-created-events-topic",
+                    userCreatedEvent.getId(),
+                    UserCreatedEvent.toMap(userCreatedEvent)).get();
+        } catch (ExecutionException | InterruptedException e){
+            log.error("An exception during sending user created event to kafka ", e);
+        }
+
 
         await().atMost(300, TimeUnit.SECONDS).untilAsserted(() -> {
             Optional<User> userOptional = userRepository.findById("userId");

@@ -4,6 +4,7 @@ import com.redis.testcontainers.RedisContainer;
 import dev.ilya_anna.user_service.dto.UserDto;
 import dev.ilya_anna.user_service.dto.UserSettingsDto;
 import dev.ilya_anna.user_service.entities.User;
+import dev.ilya_anna.user_service.events.UserChangedEvent;
 import dev.ilya_anna.user_service.events.UserSignOutEvent;
 import dev.ilya_anna.user_service.repositories.UserRepository;
 import dev.ilya_anna.user_service.repositories.UserSettingsRepository;
@@ -13,6 +14,8 @@ import dev.ilya_anna.user_service.services.UserSettingsService;
 import dev.ilya_anna.user_service.services.UuidService;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,9 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -103,6 +109,32 @@ public class UserControllerTests {
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
         registry.add("spring.data.redis.password", () -> "password");
     }
+
+    @Getter
+    @Setter
+    static class TestConsumer {
+        private List<Map<String, Object>> userChangedEventMessages = new ArrayList<>();
+
+        @KafkaListener(topics = "user-changed-events-topic")
+        public void onUserCreatedEvent(Map<String, Object> message) {
+            userChangedEventMessages.add(message);
+        }
+
+        public void clear() {
+            userChangedEventMessages.clear();
+        }
+    }
+
+    @TestConfiguration
+    static class Config {
+        @Bean
+        public TestConsumer testConsumer() {
+            return new TestConsumer();
+        }
+    }
+
+    @Autowired
+    private TestConsumer testConsumer;
 
     @Autowired
     private UserRepository userRepository;
@@ -329,7 +361,7 @@ public class UserControllerTests {
 
 
     @Test
-    void updateUser_UpdatesUser_WhenUserExists() {
+    void updateUser_UpdatesUserAndSendsEvent_WhenUserExists() {
         String userId = uuidService.generate();
         User user = User.builder()
                 .id(userId)
@@ -339,7 +371,7 @@ public class UserControllerTests {
                 .email("john@example.com")
                 .phone("+1234567890")
                 .address("123 Main St")
-                .registeredAt(ZonedDateTime.now(ZoneId.systemDefault()))
+                .registeredAt(ZonedDateTime.now())
                 .about("About John")
                 .avatarImageId("avatar123")
                 .build();
@@ -380,6 +412,17 @@ public class UserControllerTests {
         assertEquals("new about", result.getAbout());
         assertEquals(user.getAvatarImageId(), result.getAvatarImageId());
         assertEquals(5, result.getAnnouncementsCount());
+
+        UserChangedEvent userChangedEvent = UserChangedEvent.fromMap(testConsumer.userChangedEventMessages.getFirst());
+        assertEquals(userId, userChangedEvent.getId());
+        assertEquals(userId, userChangedEvent.getUserId());
+        assertEquals("newName", userChangedEvent.getName());
+        assertEquals("newSurname", userChangedEvent.getSurname());
+        assertEquals("new-nickname", userChangedEvent.getNickname());
+        assertEquals("new@mail.ru", userChangedEvent.getEmail());
+        assertEquals("+7777777777", userChangedEvent.getPhone());
+        assertEquals("new street", userChangedEvent.getAddress());
+        assertEquals("new about", userChangedEvent.getAbout());
     }
 
     @Test
