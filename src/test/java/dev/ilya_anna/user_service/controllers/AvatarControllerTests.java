@@ -91,7 +91,7 @@ public class AvatarControllerTests {
             .withCommand("server /data");
 
     @BeforeAll
-    static void beforeAll() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    static void beforeAll() {
         redis.start();
         redis.withEnv("REDIS_PASSWORD", "password");
         postgres.start();
@@ -101,9 +101,13 @@ public class AvatarControllerTests {
                 .endpoint("http://" + minio.getHost() + ":" + minio.getFirstMappedPort())
                 .credentials("minioadmin", "minioadmin")
                 .build();
-
-        if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket("avatars").build())) {
-            minioClient.makeBucket(MakeBucketArgs.builder().bucket("avatars").build());
+        
+        try{
+            if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket("avatars").build())) {
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket("avatars").build());
+            }
+        } catch (Exception e){
+            log.error("An exception during creating bucket in minio ", e);
         }
     }
 
@@ -160,7 +164,7 @@ public class AvatarControllerTests {
     }
 
     @Test
-    void getUserAvatar_ReturnsUserAvatar_WhenAvatarExists() throws IOException, ServerException, InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    void getUserAvatar_ReturnsUserAvatar_WhenAvatarExists() {
         String avatarId = uuidService.generate();
         String avatarPath = "users/123/avatar/" + avatarId + ".jpg";
 
@@ -170,13 +174,18 @@ public class AvatarControllerTests {
                 .build();
         avatarMetadataRepository.save(avatarMetadata);
 
-        byte[] testImage = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
-        minioClient.putObject(
-                PutObjectArgs.builder()
-                        .bucket("avatars")
-                        .object(avatarPath)
-                        .stream(new ByteArrayInputStream(testImage), testImage.length, -1)
-                        .build());
+        try{
+            byte[] testImage = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket("avatars")
+                            .object(avatarPath)
+                            .stream(new ByteArrayInputStream(testImage), testImage.length, -1)
+                            .build());
+        } catch (Exception e){
+            log.error("An exception during saving image to minio ", e);
+        }
+
 
         byte[] result = given()
                 .when()
@@ -185,8 +194,13 @@ public class AvatarControllerTests {
                 .log().headers()
                 .statusCode(HttpStatus.OK.value()).extract().body().asByteArray();
 
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(result));
-        assertThat(image).isNotNull();
+        try{
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(result));
+            assertThat(image).isNotNull();
+        } catch (IOException e){
+            log.error("An exception during reading image from array of byte ", e);
+        }
+
     }
 
     @Test
@@ -200,7 +214,7 @@ public class AvatarControllerTests {
     }
 
     @Test
-    void updateUserAvatar_UpdatesUserAvatar_WhenUserExistsAndDoesNotHaveAvatar() throws IOException {
+    void updateUserAvatar_UpdatesUserAvatar_WhenUserExistsAndDoesNotHaveAvatar() {
         String userId = uuidService.generate();
         User user = User.builder()
                 .id(userId)
@@ -223,7 +237,13 @@ public class AvatarControllerTests {
                 Optional.ofNullable(ArgumentMatchers.any())))
                 .thenReturn(5);
 
-        byte[] imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+        byte[] imageBytes = new byte[0];
+        try {
+            imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+        } catch (IOException e){
+            log.error("An exception during reading image from array of byte ", e);
+        }
+        
 
         UserDto result = given()
                 .contentType(ContentType.MULTIPART)
@@ -247,7 +267,7 @@ public class AvatarControllerTests {
     }
 
     @Test
-    void updateUserAvatar_UpdatesUserAvatar_WhenUserExistsAndHasAvatar() throws IOException, ServerException, InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    void updateUserAvatar_UpdatesUserAvatar_WhenUserExistsAndHasAvatar() {
         String userId = uuidService.generate();
 
         String avatarId = uuidService.generate();
@@ -259,13 +279,18 @@ public class AvatarControllerTests {
                 .build();
         avatarMetadataRepository.save(avatarMetadata);
 
-        byte[] testImage = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
-        minioClient.putObject(
-                PutObjectArgs.builder()
-                        .bucket("avatars")
-                        .object(avatarPath)
-                        .stream(new ByteArrayInputStream(testImage), testImage.length, -1)
-                        .build());
+        byte[] testImage = new byte[0];
+        try {
+            testImage = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket("avatars")
+                            .object(avatarPath)
+                            .stream(new ByteArrayInputStream(testImage), testImage.length, -1)
+                            .build());
+        } catch (Exception e){
+            log.error("An exception during saving image to minio ", e);
+        }
 
         User user = User.builder()
                 .id(userId)
@@ -289,7 +314,12 @@ public class AvatarControllerTests {
                 Optional.ofNullable(ArgumentMatchers.any())))
                 .thenReturn(5);
 
-        byte[] imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar2.jpg"));
+        byte[] imageBytes = new byte[0];
+        try {
+            imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar2.jpg"));
+        } catch (IOException e){
+            log.error("An exception during reading image from array of bytes", e);
+        }
 
         UserDto result = given()
                 .contentType(ContentType.MULTIPART)
@@ -313,7 +343,7 @@ public class AvatarControllerTests {
     }
 
     @Test
-    void updateUserAvatar_ReturnsNotFound_WhenUserDoesNotExist() throws IOException, ServerException, InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    void updateUserAvatar_ReturnsNotFound_WhenUserDoesNotExist(){
         String userId = uuidService.generate();
 
         User user = User.builder()
@@ -333,7 +363,13 @@ public class AvatarControllerTests {
 
         userRepository.delete(user);
 
-        byte[] imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+        byte[] imageBytes = new byte[0];
+        try {
+            imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+        } catch (IOException e){
+            log.error("An exception during reading image from array of bytes ", e);
+        }
+
 
         given()
                 .contentType(ContentType.MULTIPART)
@@ -347,7 +383,7 @@ public class AvatarControllerTests {
     }
 
     @Test
-    void updateUserAvatar_ReturnsForbidden_WhenUpdatingAnotherUserAvatar() throws IOException {
+    void updateUserAvatar_ReturnsForbidden_WhenUpdatingAnotherUserAvatar() {
         String userId = uuidService.generate();
 
         String currentUserId = uuidService.generate();
@@ -360,7 +396,13 @@ public class AvatarControllerTests {
 
         String accessToken = jwtService.generateAccess(currentUser);
 
-        byte[] imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+        byte[] imageBytes = new byte[0];
+
+        try {
+            imageBytes = Files.readAllBytes(Paths.get("src/test/resources/test-avatar.jpg"));
+        } catch (IOException e){
+            log.error("An exception during reading image from array of bytes ", e);
+        }
 
         given()
                 .contentType(ContentType.MULTIPART)

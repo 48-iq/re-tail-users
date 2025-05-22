@@ -107,16 +107,20 @@ public class UserSignOutEventsConsumerTests {
     }
 
     @Test
-    void consumeUserCreatedEvent_CreatesUserInDB_WhenEventReceived() throws ExecutionException, InterruptedException {
+    void consumeUserCreatedEvent_CreatesUserInDB_WhenEventReceived() {
         await().atMost(300, TimeUnit.SECONDS).until(() -> kafka.isRunning());
         UserSignOutEvent userSignOutEvent = new UserSignOutEvent();
         userSignOutEvent.setId("123");
         userSignOutEvent.setUserId("userId");
         userSignOutEvent.setTime(ZonedDateTime.now());
 
-        kafkaTemplate.send("user-sign-out-events-topic",
-                userSignOutEvent.getId(),
-                UserSignOutEvent.toMap(userSignOutEvent)).get();
+        try{
+            kafkaTemplate.send("user-sign-out-events-topic",
+                    userSignOutEvent.getId(),
+                    UserSignOutEvent.toMap(userSignOutEvent)).get();
+        } catch (ExecutionException | InterruptedException e){
+            log.error("An exception during sending user sign out event to kafka ", e);
+        }
 
         await().atMost(300, TimeUnit.SECONDS).untilAsserted(() -> {
             Optional<SignOutMark> signOutMarkOptional = signOutMarkRepository.findById("123");

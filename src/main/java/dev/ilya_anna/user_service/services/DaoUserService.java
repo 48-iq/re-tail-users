@@ -4,8 +4,10 @@ import dev.ilya_anna.user_service.dto.UpdateUserDto;
 import dev.ilya_anna.user_service.dto.UserDto;
 import dev.ilya_anna.user_service.dto.UserSettingsDto;
 import dev.ilya_anna.user_service.entities.User;
+import dev.ilya_anna.user_service.events.UserChangedEvent;
 import dev.ilya_anna.user_service.events.UserCreatedEvent;
 import dev.ilya_anna.user_service.exceptions.UserNotFoundException;
+import dev.ilya_anna.user_service.producers.UserChangedEventsProducer;
 import dev.ilya_anna.user_service.repositories.UserRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -26,6 +28,9 @@ public class DaoUserService implements UserService{
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private UserChangedEventsProducer userChangedEventsProducer;
 
     public UserDto getUserAllInfo(String userId){
         User user = userRepository.findById(userId).orElseThrow(
@@ -76,6 +81,21 @@ public class DaoUserService implements UserService{
         user.setAddress(updateUserDto.getAddress());
         user.setAbout(updateUserDto.getAbout());
         userRepository.save(user);
+
+        UserChangedEvent userChangedEvent = UserChangedEvent.builder()
+                .id(user.getId())
+                .userId(user.getId())
+                .name(user.getName())
+                .surname(user.getSurname())
+                .nickname(user.getNickname())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .address(user.getAddress())
+                .registeredAt(user.getRegisteredAt())
+                .about(user.getAbout())
+                .build();
+
+        userChangedEventsProducer.sendUserCreatedEvent(userChangedEvent);
 
         return UserDto.builder()
                 .name(user.getName())
